@@ -1,5 +1,8 @@
 var socket = io();
-socket.on('sendHomeCoordinates', rcvHomeCoordinates);
+socket.on('sendSetupData', rcvSetupData);
+
+var setupData;
+var currentViewpoint = 0;
 
 Cesium.BingMapsApi.defaultKey = '';
 var viewer = new Cesium.Viewer('map', {
@@ -15,20 +18,15 @@ var viewer = new Cesium.Viewer('map', {
   terrainShadows : true
 });
 
-viewer.camera.setView({
-  destination : Cesium.Cartesian3.fromDegrees(-86.932939, 33.212747, 5000),
-  orientation : {
-    heading : 0.268019659921368,
-    pitch : -0.34878977794813504,
-    roll : 0.0 }
-});
-	
-function rcvHomeCoordinates(data) {
-	console.log("Received home coordinates: " + JSON.stringify(data));
+function rcvSetupData(data) {
+	setupData = data;
+	console.log("Received Setup Data:\n" + JSON.stringify(data));
 		
   viewer.entities.add({
     name : "Home Area - Danger",
-    position : Cesium.Cartesian3.fromDegrees(data.longitude, data.latitude, data.altitude + 250),
+    position : Cesium.Cartesian3.fromDegrees(data.homeCoordinates.longitude,
+                                             data.homeCoordinates.latitude,
+                                             data.homeCoordinates.altitude + 250),
     cylinder : {
       length : 500.0,
       topRadius : 500.0,
@@ -41,7 +39,9 @@ function rcvHomeCoordinates(data) {
       
   viewer.entities.add({
     name : "Home Area - Safe",
-    position : Cesium.Cartesian3.fromDegrees(data.longitude, data.latitude, data.altitude + 1250),
+    position : Cesium.Cartesian3.fromDegrees(data.homeCoordinates.longitude,
+                                             data.homeCoordinates.latitude,
+                                             data.homeCoordinates.altitude + 1250),
     cylinder : {
       length : 2500.0,
       topRadius : 2500.0,
@@ -51,4 +51,18 @@ function rcvHomeCoordinates(data) {
       outlineColor : Cesium.Color.BLACK
     }
   });
+  
+  if(data.viewpoints.length > 0) {
+  	console.log("Transitioning camera to: " + JSON.stringify(data.viewpoints[0]));
+    viewer.camera.setView({
+      destination : Cesium.Cartesian3.fromDegrees(data.viewpoints[0].longitude,
+                                                  data.viewpoints[0].latitude,
+                                                  data.viewpoints[0].altitude),
+      orientation : {
+        heading : data.viewpoints[0].heading,
+        pitch : data.viewpoints[0].pitch,
+        roll : data.viewpoints[0].roll
+      }
+    });
+  }
 }
