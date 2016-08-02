@@ -3,6 +3,7 @@ socket.on('sendSetupData', rcvSetupData);
 
 var setupData;
 var currentViewpoint = 0;
+var transitionTimeout;
 
 Cesium.BingMapsApi.defaultKey = '';
 var viewer = new Cesium.Viewer('map', {
@@ -15,7 +16,8 @@ var viewer = new Cesium.Viewer('map', {
   }),
   skyAtmosphere : false,
   shadows : true,
-  terrainShadows : true
+  terrainShadows : true,
+  navigationInstructionsInitiallyVisible : false
 });
 
 function rcvSetupData(data) {
@@ -65,4 +67,43 @@ function rcvSetupData(data) {
       }
     });
   }
+  
+  if(data.viewpoints.length > 1) {
+  	transitionTimeout = setTimeout(transitionWaypoints, setupData.viewpointHoldTime * 1000);
+  	// to clear this later for some reason: `clearTimeout(transitionTimeout);`
+  }
+}
+
+function transitionWaypoints() {
+	currentViewpoint++;
+	if(currentViewpoint == setupData.viewpoints.length) {
+		currentViewpoint = 0;
+	}
+	vp = setupData.viewpoints[currentViewpoint];
+	console.log("Transitioning camera to: " + JSON.stringify(vp));
+	
+	viewer.camera.flyTo({
+		destination : Cesium.Cartesian3.fromDegrees(vp.longitude,
+                                                vp.latitude,
+                                                vp.altitude),
+    orientation : {
+        heading : vp.heading,
+        pitch : vp.pitch,
+        roll : vp.roll
+    },
+    duration : setupData.viewpointTransitionTime,
+    cancel : stopTransitions,
+    complete : function() {
+      transitionTimeout = setTimeout(transitionWaypoints, setupData.viewpointHoldTime * 1000);
+    }
+	});
+}
+
+function stopTransitions() {
+	console.log("Stopping camera transitions.");
+  clearTimeout(transitionTimeout);
+}
+
+function toggleTransitions() {
+	console.log("toggled");
 }
